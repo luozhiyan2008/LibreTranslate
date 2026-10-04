@@ -23,6 +23,7 @@ from werkzeug.http import http_date
 from werkzeug.utils import secure_filename
 
 from libretranslate import flood, remove_translated_files, scheduler, secret, security, storage, cache
+from libretranslate import school_terms
 from libretranslate.language import model2iso, iso2model, detect_languages, improve_translation_formatting, get_language_with_fallback
 from libretranslate.locales import (
     _,
@@ -816,6 +817,11 @@ def create_app(args):
         if text_format not in ["text", "html"]:
             abort(400, description=_("%(format)s format is not supported", format=text_format))
 
+        # —— 校园中俄术语库：翻译前，把术语替换为占位符（school_terms）——
+        _term_map = None
+        if not batch and text_format == "text":
+            q, _term_map = school_terms.protect(q, source_lang, target_lang)
+
         try:
             if batch:
                 batch_results = []
@@ -863,6 +869,7 @@ def create_app(args):
                   translated_text = q # Cannot translate, send the original text back
                   alternatives = []
 
+                translated_text = school_terms.restore(translated_text, _term_map)
                 result = {"translatedText": translated_text}
 
                 if source_lang == "auto":
